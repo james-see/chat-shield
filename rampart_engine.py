@@ -194,9 +194,10 @@ class RampartEngine:
         from tokenizers.pre_tokenizers import BertPreTokenizer
 
         tokenizer = Tokenizer(WordPiece(vocab_path, unk_token="[UNK]"))
-        tokenizer.pre_tokenizer = BertPreTokenizer(lowercase=True)
+        # BertPreTokenizer splits on whitespace + punctuation; lowercasing
+        # is handled by the BERT-uncased model itself, not the pre-tokenizer.
+        tokenizer.pre_tokenizer = BertPreTokenizer()
         tokenizer.enable_truncation(max_length=512)
-        # Disable padding — we handle one sequence at a time
         tokenizer.no_padding()
         return tokenizer
 
