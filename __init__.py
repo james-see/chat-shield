@@ -99,9 +99,16 @@ def register(ctx):
     global _rampart
     if config["rampart_enabled"]:
         try:
-            data_dir = Path(ctx.state.get("_data_dir", default="")) or Path(
-                str(Path.home() / ".hermes" / "plugin-data" / "chat-shield")
-            )
+            # Use the documented plugin_data_dir() API for a stable data path
+            from pathlib import Path as _P
+
+            try:
+                # Hermes >=0.22 exposes plugin_data_dir() on ctx
+                data_dir = Path(ctx.plugin_data_dir())
+            except AttributeError:
+                # Fallback for older versions
+                data_dir = _P(str(_P.home() / ".hermes" / "plugin-data" / "chat-shield"))
+
             keep_set = set(config.get("rampart_keep_labels", []))
             _rampart = RampartEngine(
                 cache_dir=data_dir,
