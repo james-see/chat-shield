@@ -147,13 +147,9 @@ class RampartEngine:
             vocab_path = model_dir / "vocab.txt"
             config_path = model_dir / "config.json"
 
-            # Load tokenizer
-            self._tokenizer = Tokenizer.from_file(str(vocab_path)) if vocab_path.exists() else None
-            if self._tokenizer is None:
-                # Fallback: use HuggingFace transformers tokenizer
-                from tokenizers import Tokenizer as HFTokenizer
-
-                self._tokenizer = HFTokenizer.from_pretrained(_MODEL_ID)
+            # Load tokenizer — vocab.txt is a BERT WordPiece vocab, not a tokenizer.json.
+            # We need to build a BertWordPieceTokenizer from the vocab file.
+            self._tokenizer = self._build_tokenizer(str(vocab_path))
 
             # Load label mapping from config
             import json
@@ -184,6 +180,25 @@ class RampartEngine:
             logger.warning("Failed to load Rampart model: %s; regex-only mode", exc)
             self._load_failed = True
             return False
+
+    def _build_tokenizer(self, vocab_path: str):
+        """Build a BERT WordPiece tokenizer from vocab.txt.
+
+        The Rampart model ships a plain vocab.txt (BERT WordPiece), not a
+        tokenizer.json that ``tokenizers.Tokenizer.from_file`` expects.
+        We construct a ``BertWordPieceTokenizer`` and configure it
+        to match MiniLM-L6-H384's settings (lowercase, 512 max length).
+        """
+        from tokenizers import Tokenizer
+        from tokenizers.models import WordPiece
+        from tokenizers.pre_tokenizers import BertPreTokenizer
+
+        tokenizer = Tokenizer(WordPiece(vocab_path, unk_token="[UNK]"))
+        tokenizer.pre_tokenizer = BertPreTokenizer(lowercase=True)
+        tokenizer.enable_truncation(max_length=512)
+        # Disable padding — we handle one sequence at a time
+        tokenizer.no_padding()
+        return tokenizer
 
     def detect(self, text: str) -> list[tuple[str, str, int, int]]:
         """Detect PII spans in text.
