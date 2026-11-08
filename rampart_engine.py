@@ -65,7 +65,7 @@ _ENTITY_TO_TYPE = {
 }
 
 _MODEL_ID = "nationaldesignstudio/rampart"
-_MODEL_FILES = ["model_q4.onnx", "vocab.txt", "config.json"]
+_MODEL_FILES = ["onnx/model_q4.onnx", "vocab.txt", "config.json"]
 
 
 class RampartEngine:
@@ -104,6 +104,7 @@ class RampartEngine:
             raise RuntimeError("huggingface-hub not installed")
 
         for fname in _MODEL_FILES:
+            # fname may include subdirs (e.g. "onnx/model_q4.onnx")
             local = model_dir / fname
             if local.exists():
                 continue
@@ -116,6 +117,7 @@ class RampartEngine:
             # Copy / symlink into our dir
             import shutil
 
+            local.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(downloaded, local)
 
         return model_dir
@@ -141,7 +143,7 @@ class RampartEngine:
 
         try:
             model_dir = self._download_model()
-            onnx_path = model_dir / "model_q4.onnx"
+            onnx_path = model_dir / "onnx" / "model_q4.onnx"
             vocab_path = model_dir / "vocab.txt"
             config_path = model_dir / "config.json"
 
