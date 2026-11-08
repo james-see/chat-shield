@@ -58,11 +58,26 @@ def on_llm_request(**kwargs) -> dict | None:
         _warn_only(messages, active_detectors, rampart)
         return None
 
-    # Redact mode
-    full_mapping = redactor.redact_messages(messages, active_detectors, rampart)
+    # Redact mode — only redact the LAST user message, not the entire history.
+    # The LLM already saw historical content in prior turns; redacting it now is
+    # counterproductive and breaks the conversation context with 100+ placeholders.
+    last_user_msg = None
+    for msg in messages:
+        if isinstance(msg, dict) and msg.get("role") == "user":
+            last_user_msg = msg  # keep ref to the last one
+
+    if last_user_msg is None:
+        return None  # no user message in this request
+
+    # Redact only the last user message
+    single = [last_user_msg]
+    full_mapping = redactor.redact_messages(single, active_detectors, rampart)
 
     if not full_mapping:
         return None
+
+    # Copy the redacted content back into the full message list
+    last_user_msg["content"] = single[0].get("content", last_user_msg.get("content"))
 
     # Store mapping for restoration in llm_execution
     redactor.store_mapping(request_id, full_mapping)
