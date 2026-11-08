@@ -1,0 +1,57 @@
+name: chat-shield
+version: 1.0.0
+description: "Automatically redacts personally identifiable information — names, addresses, emails, phone numbers, SSNs, financial accounts, government IDs, API keys, credit cards — before it reaches external LLM providers. Combines the on-device Rampart NER model (14.7 MB, runs locally) with configurable regex detectors for specialized identifiers. The LLM sees safe placeholders; the user sees original values restored."
+author: "@james-see"
+license: MIT
+homepage: https://github.com/james-see/chat-shield
+requires_hermes: ">=0.22.0"
+provides_hooks: []
+provides_middleware:
+  - llm_request
+  - llm_execution
+python_dependencies:
+  - "onnxruntime>=1.17,<1.30"
+  - "tokenizers>=0.20,<1.0"
+  - "huggingface-hub>=0.20,<1.0"
+  - "regex>=2024.7.0,<2030"
+  - "numpy>=1.24,<3.0"
+config_schema:
+  mode:
+    type: str
+    choices: [redact, warn, off]
+    default: redact
+    label: "Shield mode"
+    description: "redact = replace sensitive data with placeholders, warn = log warnings but don't redact, off = disabled"
+  strict:
+    type: bool
+    default: false
+    label: "Strict mode"
+    description: "Redact all pattern matches regardless of context heuristics (higher false positive rate)"
+  rampart_enabled:
+    type: bool
+    default: true
+    label: "Rampart NER model"
+    description: "Enable on-device ML detection for names, addresses, government IDs, financial IDs (14.7 MB model, runs locally)"
+  rampart_threshold:
+    type: float
+    default: 0.5
+    label: "Rampart confidence threshold"
+    description: "Minimum confidence for ML-detected entities (0.0-1.0, higher = fewer false positives)"
+  rampart_keep_labels:
+    type: list
+    default: ["CITY", "STATE", "ZIP_CODE"]
+    label: "Rampart keep-set"
+    description: "Entity types to NOT redact (e.g. city/state/zip for non-sensitive context)"
+  detectors:
+    type: dict
+    default: {}
+    description: "Per-detector overrides for regex patterns, e.g. {coord_mgrs: false, credit_card: true}"
+  custom_patterns:
+    type: list
+    default: []
+    description: "Custom regex patterns to detect, each as {name: 'project_codename', pattern: 'PROJECT-\\d+', type: 'CUSTOM'}"
+  show_indicator:
+    type: bool
+    default: true
+    label: "Show redaction indicator"
+    description: "Append a brief redaction summary to agent responses"
