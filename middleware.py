@@ -79,6 +79,12 @@ def on_llm_request(**kwargs) -> dict | None:
     # Copy the redacted content back into the full message list
     last_user_msg["content"] = single[0].get("content", last_user_msg.get("content"))
 
+    # Force non-streaming so we can reliably restore placeholders in the response.
+    # Streaming restoration is fragile across providers — we'll handle that post-hackathon.
+    request["stream"] = False
+    if "stream_options" in request:
+        del request["stream_options"]
+
     # Store mapping for restoration in llm_execution
     redactor.store_mapping(request_id, full_mapping)
 
